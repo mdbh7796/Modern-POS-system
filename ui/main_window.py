@@ -10,15 +10,15 @@ from ui.checkout_dialog import CheckoutDialog
 from ui.admin_window import AdminWindow
 from services.receipt_service import ReceiptService
 from services.currency_service import CurrencyService
-import qtawesome as qta
 from PyQt6 import QtCore
+import config
 
 class MainWindow(QMainWindow):
     def __init__(self, role="cashier"):
         super().__init__()
         self.role = role
-        self.setWindowTitle(f"Coffee Shop POS - {role.title()}")
-        self.resize(1200, 800)
+        self.setWindowTitle(f"{config.APP_NAME} - {role.title()}")
+        self.resize(*config.DEFAULT_WINDOW_SIZE)
         
         # Controllers
         self.product_ctrl = ProductController()
@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         
         # Header (Logo + Search + Currency)
         header_layout = QHBoxLayout()
-        header_label = QLabel("Coffee Shop POS")
+        header_label = QLabel(config.APP_NAME)
         header_label.setObjectName("HeaderLabel")
         header_layout.addWidget(header_label)
         
@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
         
         # Currency Selector
         self.currency_combo = QComboBox()
-        self.currency_combo.addItems(["USD", "EUR", "MAD"])
+        self.currency_combo.addItems(config.SUPPORTED_CURRENCIES)
         self.currency_combo.setFixedWidth(80)
         self.currency_combo.currentTextChanged.connect(self.on_currency_changed)
         header_layout.addWidget(self.currency_combo)
@@ -134,21 +134,24 @@ class MainWindow(QMainWindow):
     def load_categories(self):
         categories = self.product_ctrl.get_all_categories()
         for cat in categories:
-            self.category_tabs.addTab(QWidget(), cat.name)
+            tab = QWidget()
+            # Optimization: Store category ID in the tab widget's property
+            tab.setProperty("category_id", cat.id)
+            self.category_tabs.addTab(tab, cat.name)
         
         if categories:
             self.load_products(categories[0].id)
 
     def load_products_for_tab(self, index):
-        cat_name = self.category_tabs.tabText(index)
-        # Optimization: Store category IDs in tabs or lookup. 
-        # For now, simplistic lookup from DB for simplicity of refactor.
-        # Ideally, we should fetch cat ID from the tab data.
-        categories = self.product_ctrl.get_all_categories()
-        for cat in categories:
-            if cat.name == cat_name:
-                self.load_products(cat.id)
-                break
+        if index < 0:
+            return
+        
+        tab = self.category_tabs.widget(index)
+        category_id = tab.property("category_id")
+        
+        if category_id is not None:
+            self.load_products(category_id)
+
 
     def load_products(self, category_id):
         # Clear existing items
@@ -246,15 +249,19 @@ class MainWindow(QMainWindow):
         dialog.total_label.setText(f"Total to Pay: {fmt_total}")
         
         if dialog.exec():
-            # Pass customer_id from dialog
-            self.process_order(total, dialog.customer_id)
+            # Process order without customer_id
+            self.process_order(total)
 
-    def process_order(self, total_amount, customer_id=None):
+    def process_order(self, total_amount):
         try:
-            new_order = self.order_ctrl.create_order(self.cart_items, total_amount, customer_id)
+            new_order = self.order_ctrl.create_order(self.cart_items, total_amount)
             
-            # Generate Receipt
-            receipt_path = self.receipt_service.generate_receipt(new_order, self.cart_items)
+            # Generate Receipt with current currency formatting
+            receipt_path = self.receipt_service.generate_receipt(
+                new_order, 
+                self.cart_items, 
+                currency_service=self.currency_service
+            )
             
             # Reset UI
             self.cart_items = []

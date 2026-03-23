@@ -1,5 +1,6 @@
 from data.database import init_db, SessionLocal
 from data.models import Category, Product, User
+from data.auth import hash_password
 
 def seed_data():
     init_db()
@@ -10,8 +11,8 @@ def seed_data():
         # Check if users exist (migration support)
         if not db.query(User).first():
             print("Seeding users...")
-            admin = User(username="admin", password_hash="admin123", role="admin")
-            cashier = User(username="cashier", password_hash="cashier123", role="cashier")
+            admin = User(username="admin", password_hash=hash_password("admin123"), role="admin")
+            cashier = User(username="cashier", password_hash=hash_password("cashier123"), role="cashier")
             db.add_all([admin, cashier])
             db.commit()
         return
@@ -38,8 +39,8 @@ def seed_data():
     db.add_all(products)
     
     # Users
-    admin = User(username="admin", password_hash="admin123", role="admin")
-    cashier = User(username="cashier", password_hash="cashier123", role="cashier")
+    admin = User(username="admin", password_hash=hash_password("admin123"), role="admin")
+    cashier = User(username="cashier", password_hash=hash_password("cashier123"), role="cashier")
     db.add_all([admin, cashier])
 
     db.commit()

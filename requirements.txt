@@ -3,3 +3,6 @@ SQLAlchemy
 matplotlib
 alembic
 qtawesome
+bcrypt
+pytest
+pytest-qt

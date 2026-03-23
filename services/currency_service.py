@@ -1,3 +1,5 @@
+import config
+
 class CurrencyService:
     def __init__(self):
         self.rates = {
@@ -10,10 +12,10 @@ class CurrencyService:
             'EUR': '€',
             'MAD': 'DH'
         }
-        self.current_currency = 'USD'
+        self.current_currency = config.DEFAULT_CURRENCY
 
     def set_currency(self, currency_code):
-        if currency_code in self.rates:
+        if currency_code in self.rates and currency_code in config.SUPPORTED_CURRENCIES:
             self.current_currency = currency_code
 
     def convert(self, amount_usd):

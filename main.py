@@ -1,4 +1,12 @@
 import sys
+import warnings
+import os
+import contextlib
+
+warnings.filterwarnings('ignore')
+
+os.environ['QT_LOGGING_RULES'] = '*.debug=false;qt.qpa.*=false'
+
 from PyQt6.QtWidgets import QApplication
 from ui.styles import DARK_THEME_QSS
 from ui.main_window import MainWindow

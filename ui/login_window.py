@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButto
 from PyQt6.QtCore import Qt, pyqtSignal
 from data.database import SessionLocal
 from data.models import User
+from data.auth import verify_password
 
 class LoginWindow(QWidget):
     login_successful = pyqtSignal(str) # Emits role on success
@@ -53,8 +54,8 @@ class LoginWindow(QWidget):
         user = db.query(User).filter(User.username == username).first()
         db.close()
 
-        # Simple plaintext check for demo
-        if user and user.password_hash == password:
+        # Verify password hash
+        if user and verify_password(password, user.password_hash):
             self.login_successful.emit(user.role)
             self.close()
         else:

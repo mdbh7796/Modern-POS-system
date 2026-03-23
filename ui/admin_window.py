@@ -5,6 +5,9 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QTabWidget,
 from PyQt6.QtCore import Qt
 from controllers.product_controller import ProductController
 from controllers.order_controller import OrderController
+from data.database import SessionLocal
+from data.models import User
+from data.auth import verify_password, hash_password
 
 from ui.reports_widget import ReportsWidget
 
@@ -40,6 +43,12 @@ class AdminWindow(QMainWindow):
         # 3. Reports Tab
         self.reports_widget = ReportsWidget()
         self.tabs.addTab(self.reports_widget, "Reports")
+        
+        # 4. Change Password Tab
+        self.password_tab = QWidget()
+        self.init_password_tab()
+        self.tabs.addTab(self.password_tab, "Change Password")
+        
         self.tabs.currentChanged.connect(self.on_tab_change)
 
     def on_tab_change(self, index):
@@ -192,6 +201,81 @@ class AdminWindow(QMainWindow):
                 self.load_products()
             else:
                 QMessageBox.critical(self, "Error", "Failed to delete product")
+
+    def init_password_tab(self):
+        layout = QVBoxLayout(self.password_tab)
+        layout.setContentsMargins(50, 50, 50, 50)
+        layout.setSpacing(20)
+        
+        title = QLabel("Change Password")
+        title.setStyleSheet("font-size: 20px; font-weight: bold;")
+        layout.addWidget(title)
+        
+        self.user_combo = QComboBox()
+        self.load_users()
+        layout.addWidget(QLabel("Select User:"))
+        layout.addWidget(self.user_combo)
+        
+        self.current_password = QLineEdit()
+        self.current_password.setPlaceholderText("Current Password")
+        self.current_password.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.current_password)
+        
+        self.new_password = QLineEdit()
+        self.new_password.setPlaceholderText("New Password")
+        self.new_password.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.new_password)
+        
+        self.confirm_password = QLineEdit()
+        self.confirm_password.setPlaceholderText("Confirm New Password")
+        self.confirm_password.setEchoMode(QLineEdit.EchoMode.Password)
+        layout.addWidget(self.confirm_password)
+        
+        change_btn = QPushButton("Change Password")
+        change_btn.clicked.connect(self.change_password)
+        layout.addWidget(change_btn)
+        
+        layout.addStretch()
+
+    def load_users(self):
+        self.user_combo.clear()
+        db = SessionLocal()
+        users = db.query(User).all()
+        for user in users:
+            self.user_combo.addItem(user.username, userData=user.id)
+        db.close()
+
+    def change_password(self):
+        user_id = self.user_combo.currentData()
+        current = self.current_password.text()
+        new_pass = self.new_password.text()
+        confirm = self.confirm_password.text()
+        
+        if not current or not new_pass or not confirm:
+            QMessageBox.warning(self, "Error", "Please fill in all fields")
+            return
+        
+        if new_pass != confirm:
+            QMessageBox.warning(self, "Error", "New passwords do not match")
+            return
+        
+        db = SessionLocal()
+        user = db.get(User, user_id)
+        
+        if not user or not verify_password(current, user.password_hash):
+            db.close()
+            QMessageBox.warning(self, "Error", "Current password is incorrect")
+            return
+        
+        user.password_hash = hash_password(new_pass)
+        db.commit()
+        db.close()
+        
+        self.current_password.clear()
+        self.new_password.clear()
+        self.confirm_password.clear()
+        
+        QMessageBox.information(self, "Success", "Password changed successfully")
 
     def closeEvent(self, event):
         self.product_ctrl.close()

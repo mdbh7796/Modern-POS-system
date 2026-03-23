@@ -1,5 +1,6 @@
 from data.database import SessionLocal
 from data.models import Product, Category
+from utils.decorators import require_admin
 
 class ProductController:
     def __init__(self):
@@ -12,7 +13,7 @@ class ProductController:
         return self.db.query(Product).filter(Product.category_id == category_id).all()
 
     def get_product_by_id(self, product_id):
-        return self.db.query(Product).get(product_id)
+        return self.db.get(Product, product_id)
 
     def add_product(self, name, price, category_id, image_url=None):
         new_product = Product(
@@ -25,6 +26,7 @@ class ProductController:
         self.db.commit()
         return new_product
 
+    @require_admin
     def delete_product(self, product_id):
         product = self.get_product_by_id(product_id)
         if product:
